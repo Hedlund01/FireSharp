@@ -1,0 +1,96 @@
+@using System.Security.Claims
+@using FireSharp.Constants
+@using FireSharp.Data
+@using FireSharp.Model
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using AuthorizationServiceExtensions = FireSharp.Constants.AuthorizationServiceExtensions
+@inject RoleManager<ApplicationRole> roleManager;
+@inject UserManager<ApplicationUser> userManager;
+@inject ILogger<Test> logger
+
+@rendermode InteractiveServer
+@attribute [Authorize]
+@page "/admin"
+
+<h3>Test</h3>
+
+<FluentCard>
+    <h2>perms</h2>
+    @foreach(var perm in permissions)
+    {
+        <p>@perm</p>
+    }
+</FluentCard>
+
+<FluentCard>
+    <h2>roles</h2>
+    @foreach(var perm in roles)
+    {
+        <p>@perm.Name</p>
+    }
+</FluentCard>
+
+
+
+<EditForm Model="@createRoleModel" OnValidSubmit="@HandleValidSubmit" FormName="createRole">
+    <DataAnnotationsValidator />
+    <FluentValidationSummary />
+    
+    <FluentTextField @bind-Value="@createRoleModel.RoleName" Label="Role Name" />
+    <FluentButton Type="ButtonType.Submit">Submit</FluentButton>
+</EditForm>
+
+
+@code {
+
+    private CreateRoleModel createRoleModel { get; set; } = new();
+    
+    List<string> permissions = [];
+
+    List<ApplicationRole> roles = [];
+    
+    protected override Task OnInitializedAsync()
+    {
+        var perm = AuthorizationServiceExtensions.GetAllPermissions<IPermission>();
+        permissions = perm.ToList();
+        
+        roles = roleManager.Roles.ToList();
+        return base.OnInitializedAsync();
+    }
+    
+    private async Task HandleValidSubmit()
+    {
+        if(createRoleModel.RoleName == null)
+        {
+            return;
+        }
+
+        var role = new ApplicationRole()
+        {
+            Name = createRoleModel.RoleName,
+            NormalizedName = createRoleModel.RoleName.ToUpper().Trim(),
+            Id = Guid.NewGuid().ToString(),
+            ConcurrencyStamp = Guid.NewGuid().ToString()
+        };
+       var result =  await roleManager.CreateAsync(role);
+
+        if (result.Succeeded)
+        {
+            logger.LogInformation("Role created");
+            roles.Add(role);
+        }
+        else
+        {
+            logger.LogError("Role creation failed");
+        }
+    }
+    
+    
+    
+    private class CreateRoleModel
+    {
+        public string RoleName { get; set; }
+    }
+
+}

@@ -1,0 +1,93 @@
+@using FireSharp.Data
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+
+@inject RoleManager<ApplicationRole> roleManager
+@inject UserManager<ApplicationUser> userManager
+@inject IDialogService dialogService
+@inject ILogger<Roles> logger
+@inject IToastService toastService
+
+@attribute [Authorize(Policy = AdminPermissions.Roles.Read)]
+@page "/Admin/Roles"
+@rendermode InteractiveAuto
+
+<h3>Roles</h3>
+<FluentCard>
+    <FluentDataGrid Items="@roles.AsQueryable()">
+        <TemplateColumn Title="Actions">
+            <FluentMenuButton Text="Actions" Items="actionItems" OnMenuChanged="@((args)=> HandleMenuChange(args, context.Item1))"></FluentMenuButton>
+        </TemplateColumn>
+        <PropertyColumn Property="@(r => r.Item1.Name)" Sortable="true" Title="Role Name"></PropertyColumn>
+        <PropertyColumn Property="@(r => r.Item2)" Title="User Count"></PropertyColumn>
+
+    </FluentDataGrid>
+</FluentCard>
+@code {
+    
+    List<Tuple<ApplicationRole, int>> roles = [];
+    
+    private Dictionary<string, string> actionItems = new Dictionary<string, string>()
+    {
+        {"EDIT","Edit"},
+        {"DELETE","Delete"},
+        {"PERMISSIONS","Permissions"}
+    };
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        var _roles = roleManager.Roles.ToList();
+        foreach (var role in _roles)
+        {
+            var users = userManager.GetUsersInRoleAsync(role.Name).Result;
+            roles.Add(new Tuple<ApplicationRole, int>(role, users.Count));
+        }
+        
+        
+    }
+    
+    private async Task HandleMenuChange(MenuChangeEventArgs args, ApplicationRole role)
+    {
+        switch (args.Id)
+        {
+            case "EDIT":
+                logger.LogInformation("Edit role {name}", role.Name);
+                break;
+            case "DELETE":
+                await HandleDeleteAsync(role);
+                break;
+            case "PERMISSIONS":
+                logger.LogInformation("Edit permissions for role {name}", role.Name);
+                break;
+        }
+    }
+
+    
+    private async Task HandleDeleteAsync( ApplicationRole role)
+    {
+        var dialog = await dialogService.ShowConfirmationAsync($"Are you sure you want to delete role {role.Name}?", "Yes", "No", "Delete Role");
+        DialogResult? dialogResult = await dialog.Result;
+        
+        if (!dialogResult.Cancelled)
+        {
+            logger.LogInformation(dialogResult.Data.ToString());
+            logger.LogInformation("Deleting role {role}", role.Name);
+            var result = await roleManager.DeleteAsync(role);
+            if (result.Succeeded)
+            {
+                roles.Remove(roles.First(r => r.Item1.Id == role.Id));
+            }
+            else
+            {
+                toastService.ShowError("Failed to delete role");
+            }
+            
+        }
+        else
+        {
+            logger.LogInformation("User cancelled delete operation");
+        }
+    }
+
+}

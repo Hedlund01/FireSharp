@@ -1,0 +1,32 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu/>
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+        </div>
+
+        <FluentMessageBarProvider Section="MESSAGES_TOP" ClearAfterNavigation="true" />
+        
+        <div class="content px-4">
+            @Body
+
+        </div>
+    </main>
+
+    <FluentToastProvider MaxToastCount="10" />
+    <FluentDialogProvider @rendermode="InteractiveServer"/>
+    <FluentTooltipProvider />
+    <FluentKeyCodeProvider />
+    <FluentMenuProvider @rendermode="InteractiveServer" />
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
